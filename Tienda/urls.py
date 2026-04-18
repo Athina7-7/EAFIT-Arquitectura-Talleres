@@ -16,8 +16,22 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from tienda_app import views
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('tienda_app.urls')),
+    # Tutorial: comparativo FBV (spaghetti) vs CBV
+    path(
+        "compra-rapida-fbv/<int:libro_id>/",
+        views.compra_rapida_fbv,
+        name="compra_rapida_fbv",
+    ),
+    path(
+        "compra-rapida/<int:libro_id>/",
+        views.CompraRapidaView.as_view(),
+        name="compra_rapida_cbv",
+    ),
+
 ]

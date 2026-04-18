@@ -13,6 +13,8 @@ class CompraService:
 
     def __init__(self, procesador_pago):
         self.procesador_pago = procesador_pago
+        # Alias (tutorial) para mantener semántica del PDF sin romper el código existente.
+        self.procesador = procesador_pago
         self.builder = OrdenBuilder()
 
     def obtener_detalle_producto(self, libro_id):
@@ -45,3 +47,44 @@ class CompraService:
         inv.save()
 
         return orden.total
+
+    def ejecutar_proceso_compra(self, usuario, lista_productos, direccion=""):
+        orden = (
+            self.builder
+            .con_usuario(usuario)
+            .con_productos(lista_productos)
+            .para_envio(direccion)
+            .build()
+        )
+
+        if self.procesador.pagar(orden.total):
+            return f"Orden {orden.id} procesada exitosamente."
+
+        orden.delete()
+        raise Exception("Error en la pasarela de pagos.")
+
+
+class CompraRapidaService:
+    def __init__(self, procesador_pago):
+        self.procesador_pago = procesador_pago
+
+    def obtener_detalle(self, libro_id):
+        libro = get_object_or_404(Libro, id=libro_id)
+        total = CalculadorImpuestos.obtener_total_con_iva(libro.precio)
+        return {"libro": libro, "total": total}
+
+    def procesar(self, libro_id):
+        libro = get_object_or_404(Libro, id=libro_id)
+        inv = get_object_or_404(Inventario, libro=libro)
+
+        if inv.cantidad <= 0:
+            raise ValueError("No hay existencias.")
+
+        total = CalculadorImpuestos.obtener_total_con_iva(libro.precio)
+
+        if self.procesador_pago.pagar(total):
+            inv.cantidad -= 1
+            inv.save()
+            return total
+
+        return None
