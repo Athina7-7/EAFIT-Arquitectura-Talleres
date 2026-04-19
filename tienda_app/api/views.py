@@ -1,3 +1,6 @@
+import logging
+
+from django.http import Http404
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,6 +9,8 @@ from tienda_app.infra.factories import PaymentFactory
 from tienda_app.services import CompraService
 
 from .serializers import OrdenInputSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class CompraAPIView(APIView):
@@ -41,7 +46,19 @@ class CompraAPIView(APIView):
                 status=status.HTTP_201_CREATED,
             )
 
+        except Http404:
+            return Response(
+                {'error': 'Libro o inventario no encontrado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_409_CONFLICT)
         except Exception:
+            logger.exception(
+                'Error procesando compra',
+                extra={
+                    'libro_id': datos.get('libro_id'),
+                    'cantidad': datos.get('cantidad'),
+                },
+            )
             return Response({'error': 'Error interno'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
